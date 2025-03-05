@@ -162,12 +162,7 @@ def main():
             
             # Model selection
             model = "gpt-4"
-            """model = st.selectbox(
-                "Select Model",
-                ["gpt-3.5-turbo", "gpt-4"],
-                index=0,
-                help="Choose the OpenAI model for content generation"
-            )"""
+
             
             # Submit button
             submit_button = st.form_submit_button("Generate Content")
