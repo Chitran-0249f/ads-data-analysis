@@ -149,7 +149,7 @@ def main():
             # Keywords input
             keywords = st.text_input(
                 "Enter Keywords", 
-                placeholder="e.g., artificial intelligence, machine learning, data science",
+                placeholder="e.g., Luxury Diamond Necklaces & Rings, Luxury Diamond Jewelry for Gifts, Hand Crafted Diamond Jewelry",
                 help="Comma-separated keywords to guide content generation"
             )
             
@@ -161,12 +161,13 @@ def main():
             )
             
             # Model selection
-            model = st.selectbox(
+            model = "gpt-4"
+            """model = st.selectbox(
                 "Select Model",
                 ["gpt-3.5-turbo", "gpt-4"],
                 index=0,
                 help="Choose the OpenAI model for content generation"
-            )
+            )"""
             
             # Submit button
             submit_button = st.form_submit_button("Generate Content")
