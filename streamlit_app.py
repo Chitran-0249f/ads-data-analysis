@@ -16,7 +16,7 @@ class SimpleBlogContentGenerator:
         :param openai_api_key: OpenAI API key (optional, can use env variable)
         """
         # Set up OpenAI API
-        self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
+        self.openai_api_key = os.getenv('OPENAI_API_KEY')
         if not self.openai_api_key:
             raise ValueError("OpenAI API Key is required")
         openai.api_key = self.openai_api_key
