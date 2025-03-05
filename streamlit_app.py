@@ -2,13 +2,13 @@ import os
 import streamlit as st
 import openai
 from dotenv import load_dotenv
-import chromadb
-import uuid
+import json
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
 
-class BlogContentGenerator:
+class SimpleBlogContentGenerator:
     def __init__(self, openai_api_key: str = None):
         """
         Initialize the Blog Content Generator
@@ -16,63 +16,43 @@ class BlogContentGenerator:
         :param openai_api_key: OpenAI API key (optional, can use env variable)
         """
         # Set up OpenAI API
-        self.openai_api_key = "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"
+        self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if not self.openai_api_key:
             raise ValueError("OpenAI API Key is required")
         openai.api_key = self.openai_api_key
         
-        # Set up Vector Database with updated ChromaDB configuration
-        self.chroma_client = chromadb.PersistentClient(path="./chroma_storage")
+        # Simple storage for context (no vector DB)
+        self.context_store = {}
         
-        # Create or get collection
+        # Try to load previous context if exists
         try:
-            self.collection = self.chroma_client.get_or_create_collection(
-                name="blog_context", 
-                metadata={"hnsw:space": "cosine"}
-            )
+            if os.path.exists('context_store.json'):
+                with open('context_store.json', 'r') as f:
+                    self.context_store = json.load(f)
         except Exception as e:
-            st.error(f"Error creating collection: {e}")
-            raise
+            st.warning(f"Could not load previous context: {e}")
     
-    def add_context_to_vector_db(self, context: str):
+    def add_context(self, context: str):
         """
-        Add context to vector database
+        Add context to simple storage
         
-        :param context: Text context to be vectorized
-        :return: Confirmation of addition
+        :param context: Context text to store
+        :return: Context ID
         """
-        # Generate a unique ID for the context
-        context_id = str(uuid.uuid4())
+        context_id = f"ctx_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.context_store[context_id] = {
+            'text': context,
+            'created': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
         
-        # Embed the context 
-        embedding = self._get_embedding(context)
-        
-        # Add to ChromaDB
-        self.collection.add(
-            embeddings=[embedding],
-            documents=[context],
-            ids=[context_id]
-        )
-        
+        # Save to file (optional, may not work in serverless)
+        try:
+            with open('context_store.json', 'w') as f:
+                json.dump(self.context_store, f)
+        except Exception as e:
+            st.warning(f"Could not save context: {e}")
+            
         return context_id
-    
-    def _get_embedding(self, text: str, model="text-embedding-ada-002"):
-        """
-        Get embedding for a given text
-        
-        :param text: Input text
-        :param model: Embedding model to use
-        :return: Embedding vector
-        """
-        try:
-            response = openai.Embedding.create(
-                input=[text],
-                model=model
-            )
-            return response['data'][0]['embedding']
-        except Exception as e:
-            st.error(f"Embedding generation error: {e}")
-            return None
     
     def _generate_content(self, prompt: str, max_tokens: int = 1000):
         """
@@ -102,24 +82,13 @@ class BlogContentGenerator:
         Generate complete blog content
         
         :param keywords: List of keywords for the blog
-        :param context: Optional context to be added to vector DB
+        :param context: Optional context 
         :return: Dictionary with blog title, description, and content
         """
-        # Add context to vector DB if provided
+        # Store context if provided
         context_id = None
-        retrieved_context = ""
         if context:
-            context_id = self.add_context_to_vector_db(context)
-            
-            # Retrieve relevant context (if needed)
-            try:
-                results = self.collection.query(
-                    query_embeddings=[self._get_embedding(" ".join(keywords))],
-                    n_results=1
-                )
-                retrieved_context = results['documents'][0][0] if results['documents'] else ""
-            except Exception as e:
-                st.error(f"Context retrieval error: {e}")
+            context_id = self.add_context(context)
         
         # Generate title
         title_prompt = f"Generate a catchy blog title using these keywords: {', '.join(keywords)}"
@@ -129,14 +98,14 @@ class BlogContentGenerator:
         desc_prompt = f"Write a compelling meta description for a blog post about {', '.join(keywords)}"
         description = self._generate_content(desc_prompt, max_tokens=160)
         
-        # Generate content
+        # Generate content with context if provided
         content_prompt = f"""
         Write a comprehensive blog post about {', '.join(keywords)}.
         Use an engaging and informative tone.
-        {'Additional context: ' + retrieved_context if retrieved_context else ''}
+        {'Consider this additional context: ' + context if context else ''}
         Ensure the content is well-structured with clear headings.
         """
-        content = self._generate_content(content_prompt)
+        content = self._generate_content(content_prompt, max_tokens=1000)
         
         return {
             "title": title,
@@ -163,74 +132,112 @@ def main():
     3. Click "Generate Content" to create your blog post
     """)
     
+    # API Key input
+    api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
+    
+    if not api_key and not os.getenv('OPENAI_API_KEY'):
+        st.warning("Please enter your OpenAI API key in the sidebar to use this app.")
+        return
+        
     # Create generator instance
-    generator = BlogContentGenerator()
-    
-    # Input section
-    with st.form(key='blog_generation_form'):
-        # Keywords input
-        keywords = st.text_input(
-            "Enter Keywords", 
-            placeholder="e.g., artificial intelligence, machine learning, data science",
-            help="Comma-separated keywords to guide content generation"
-        )
+    try:
+        generator = SimpleBlogContentGenerator(api_key)
         
-        # Context input
-        context = st.text_area(
-            "Additional Context (Optional)", 
-            placeholder="Paste any specific context or background information...",
-            help="Provide additional details to refine content generation"
-        )
-        
-        # Submit button
-        submit_button = st.form_submit_button("Generate Content")
-    
-    # Content generation
-    if submit_button:
-        # Validate inputs
-        if not keywords:
-            st.warning("Please enter at least one keyword.")
-            return
-        
-        # Show loading
-        with st.spinner('Generating blog content...'):
-            # Process keywords
-            keyword_list = [k.strip() for k in keywords.split(',')]
+        # Input section
+        with st.form(key='blog_generation_form'):
+            # Keywords input
+            keywords = st.text_input(
+                "Enter Keywords", 
+                placeholder="e.g., artificial intelligence, machine learning, data science",
+                help="Comma-separated keywords to guide content generation"
+            )
             
-            # Generate blog content
-            try:
-                blog_output = generator.generate_blog_content(keyword_list, context)
+            # Context input
+            context = st.text_area(
+                "Additional Context (Optional)", 
+                placeholder="Paste any specific context or background information...",
+                help="Provide additional details to refine content generation"
+            )
+            
+            # Model selection
+            model = st.selectbox(
+                "Select Model",
+                ["gpt-3.5-turbo", "gpt-4"],
+                index=0,
+                help="Choose the OpenAI model for content generation"
+            )
+            
+            # Submit button
+            submit_button = st.form_submit_button("Generate Content")
+        
+        # Content generation
+        if submit_button:
+            # Validate inputs
+            if not keywords:
+                st.warning("Please enter at least one keyword.")
+                return
+            
+            # Show loading
+            with st.spinner('Generating blog content...'):
+                # Process keywords
+                keyword_list = [k.strip() for k in keywords.split(',')]
                 
-                # Display results
-                st.success("Blog content generated successfully!")
-                
-                # Title section
-                st.subheader("📝 Blog Title")
-                st.write(blog_output['title'])
-                
-                # Description section
-                st.subheader("📄 Meta Description")
-                st.write(blog_output['description'])
-                
-                # Content section
-                st.subheader("📖 Blog Content")
-                st.write(blog_output['content'])
-                
-                # Download options
-                st.download_button(
-                    label="Download Blog Content",
-                    data=f"""Title: {blog_output['title']}
+                # Generate blog content
+                try:
+                    blog_output = generator.generate_blog_content(keyword_list, context)
+                    
+                    # Display results
+                    st.success("Blog content generated successfully!")
+                    
+                    # Create tabs for different sections
+                    tab1, tab2, tab3 = st.tabs(["Title & Description", "Blog Content", "Export"])
+                    
+                    with tab1:
+                        # Title section
+                        st.subheader("📝 Blog Title")
+                        st.info(blog_output['title'])
+                        
+                        # Description section
+                        st.subheader("📄 Meta Description")
+                        st.info(blog_output['description'])
+                    
+                    with tab2:
+                        # Content section
+                        st.subheader("📖 Blog Content")
+                        st.markdown(blog_output['content'])
+                    
+                    with tab3:
+                        # Download options
+                        st.subheader("💾 Export Options")
+                        st.download_button(
+                            label="Download as Text",
+                            data=f"""Title: {blog_output['title']}
 
 Description: {blog_output['description']}
 
 Content:
 {blog_output['content']}""",
-                    file_name="ai_generated_blog.txt",
-                    mime="text/plain"
-                )
-            
-            except Exception as e:
-                st.error(f"Error generating content: {e}")
+                            file_name="ai_generated_blog.txt",
+                            mime="text/plain"
+                        )
+                        
+                        markdown_content = f"""# {blog_output['title']}
+
+> {blog_output['description']}
+
+{blog_output['content']}
+"""
+                        st.download_button(
+                            label="Download as Markdown",
+                            data=markdown_content,
+                            file_name="ai_generated_blog.md",
+                            mime="text/markdown"
+                        )
+                
+                except Exception as e:
+                    st.error(f"Error generating content: {e}")
+    except Exception as e:
+        st.error(f"Error initializing the application: {e}")
 
 if __name__ == "__main__":
     main()
