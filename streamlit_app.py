@@ -134,7 +134,7 @@ def main():
     """)
     
     # API Key input
-    api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
+    api_key = "api key"
     
     if not api_key and not os.getenv('OPENAI_API_KEY'):
         st.warning("Please enter your OpenAI API key in the sidebar to use this app.")
