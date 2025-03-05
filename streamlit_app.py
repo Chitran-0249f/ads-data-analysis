@@ -122,7 +122,7 @@ def main():
     )
     
     # Title and description
-    st.title("🤖 Diamond Sutra SEO Blog")
+    st.title("💎 Diamond Sutra SEO Blog")
     st.markdown("""
     Generate blog content using AI with keyword-based generation and optional context.
     
