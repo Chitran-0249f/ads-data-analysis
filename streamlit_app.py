@@ -1,3 +1,4 @@
+
 import os
 import streamlit as st
 import openai
@@ -16,7 +17,7 @@ class SimpleBlogContentGenerator:
         :param openai_api_key: OpenAI API key (optional, can use env variable)
         """
         # Set up OpenAI API
-        self.openai_api_key = os.getenv('OPENAI_API_KEY') 
+        self.openai_api_key = os.getenv('OPENAI_API_KEY') or openai_api_key
         if not self.openai_api_key:
             raise ValueError("OpenAI API Key is required")
         openai.api_key = self.openai_api_key
@@ -103,7 +104,7 @@ class SimpleBlogContentGenerator:
         Write a comprehensive blog post about {', '.join(keywords)}.
         Use an engaging and informative tone.
         {'Consider this additional context: ' + context if context else ''}
-        Ensure the content is well-structured with clear headings.
+        Ensure the content is well-structured with clear headings. do not give title.
         """
         content = self._generate_content(content_prompt, max_tokens=1000)
         
@@ -133,9 +134,9 @@ def main():
     """)
     
     # API Key input
-    #api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
+    api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
     
-    if not os.getenv('OPENAI_API_KEY'):
+    if not api_key and not os.getenv('OPENAI_API_KEY'):
         st.warning("Please enter your OpenAI API key in the sidebar to use this app.")
         return
         
