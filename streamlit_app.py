@@ -104,7 +104,7 @@ class SimpleBlogContentGenerator:
         Write a comprehensive blog post about {', '.join(keywords)}.
         Use an engaging and informative tone.
         {'Consider this additional context: ' + context if context else ''}
-        Ensure the content is well-structured with clear headings. do not give title.
+        Ensure the content is well-structured with clear headings and relevant to online diamond store "diamond sutra". do not give title.
         """
         content = self._generate_content(content_prompt, max_tokens=1000)
         
