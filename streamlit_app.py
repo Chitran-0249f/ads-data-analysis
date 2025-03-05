@@ -116,13 +116,13 @@ class SimpleBlogContentGenerator:
 def main():
     # Set page config
     st.set_page_config(
-        page_title="AI Blog Content Generator",
+        page_title="Diamond Sutra SEO Optimised Blog",
         page_icon="✍️",
         layout="wide"
     )
     
     # Title and description
-    st.title("🤖 AI Blog Content Generator")
+    st.title("🤖 Diamond Sutra SEO Blog")
     st.markdown("""
     Generate blog content using AI with keyword-based generation and optional context.
     
