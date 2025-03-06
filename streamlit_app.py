@@ -155,7 +155,7 @@ def main():
             
             # Context input
             context = st.text_area(
-                "Additional Context to improve blog Quality(Optional)", 
+                "Additional Context to Improve Blog Quality(Optional)", 
                 placeholder="Paste any specific context or background information...",
                 help="Provide additional details to refine content generation"
             )
